@@ -4,134 +4,107 @@ from datetime import datetime
 
 # Базови настройки на страницата
 st.set_page_config(
-    page_title="📊 Класна анкета – Оценяване на хора",
-    page_icon="📊",
+    page_title="🎬 Филмов Критик – Оценяване на заглавия",
+    page_icon="🍿",
     layout="centered"
 )
 
-st.title("📊 Класна анкета – Оценяване на хора")
-st.caption("Малка вътрешна система за оценяване на хора от класа. Не я взимай твърде насериозно 🙂")
+st.title("🎬 Филмов Критик – Твоето мнение")
+st.caption("Система за събиране на оценки и ревюта за гледани филми.")
 
 # Инициализация на session_state
-if "grade_options" not in st.session_state:
-    st.session_state.grade_options = ["2", "3", "4", "5", "6"]
+if "star_options" not in st.session_state:
+    st.session_state.star_options = ["1 ⭐", "2 ⭐", "3 ⭐", "4 ⭐", "5 ⭐"]
 
-if "grades" not in st.session_state:
-    st.session_state.grades = {g: 0 for g in st.session_state.grade_options}
+if "rating_counts" not in st.session_state:
+    st.session_state.rating_counts = {s: 0 for s in st.session_state.star_options}
 
-# подробен лог: списък от речници
-if "records" not in st.session_state:
-    st.session_state.records = []  # [{name, grade, timestamp, comment}, ...]
+if "movie_logs" not in st.session_state:
+    st.session_state.movie_logs = [] 
 
-# SIDEBAR – настройки и инфо
+# SIDEBAR – настройки
 with st.sidebar:
-    st.header("⚙️ Настройки")
-
-    show_names = st.checkbox("Показвай таблица с хората", value=True)
-    show_stats = st.checkbox("Показвай детайлни статистики", value=True)
-
-    st.markdown("—")
-    st.subheader("🧹 Нулиране на анкетата")
-    if st.button("Изчисти всички данни", type="secondary"):
-        st.session_state.grades = {g: 0 for g in st.session_state.grade_options}
-        st.session_state.records = []
-        st.success("Всички данни бяха изчистени.")
-
-    st.markdown("—")
-    st.caption("Tip: можеш да филтрираш и сортираш таблицата по име/оценка от самия интерфейс.")
-
-# Табове: Въвеждане / Анализ
-tab_input, tab_results = st.tabs(["✍️ Въвеждане", "📈 Анализ"])
-
-# TAB 1 – Въвеждане
-with tab_input:
-    st.subheader("Въведи нова оценка")
-
-    with st.form("grade_form", clear_on_submit=True):
-        col1, col2 = st.columns([2, 1])
-
-        with col1:
-            name = st.text_input("Име на човек *", placeholder="Пример: Иво")
-
-        with col2:
-            grade = st.selectbox(
-                "Оценка *",
-                st.session_state.grade_options,
-                index=st.session_state.grade_options.index("6")
-            )
-
-        comment = st.text_area(
-            "Коментар (по желание)",
-            placeholder="Кратко мнение – защо тази оценка?"
-        )
-
-        submitted = st.form_submit_button("💾 Запази оценката")
-
-        if submitted:
-            if name.strip() == "":
-                st.warning("Моля, въведи име (не може да е празно).")
-            else:
-                # Ъпдейт на обобщените оценки
-                st.session_state.grades[grade] += 1
-
-                # Добавяне към подробния лог
-                st.session_state.records.append({
-                    "Име": name.strip(),
-                    "Оценка": int(grade),
-                    "Коментар": comment.strip(),
-                    "Време": datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-                })
-
-                st.success(f"✅ Оценката {grade} за {name.strip()} е записана.")
+    st.header("⚙️ Контролен панел")
+    show_history = st.checkbox("Покажи история на ревютата", value=True)
+    show_analytics = st.checkbox("Покажи детайлен анализ", value=True)
 
     st.markdown("---")
-    if show_names and len(st.session_state.records) > 0:
-        st.subheader("📋 Последно въведени оценки")
-        # Показваме последните 10, най-новите отгоре
-        df_records = pd.DataFrame(st.session_state.records)
-        df_recent = df_records.iloc[::-1].head(10)
-        st.dataframe(df_recent, use_container_width=True)
+    if st.button("Изтрий всички ревюта", type="primary"):
+        st.session_state.rating_counts = {s: 0 for s in st.session_state.star_options}
+        st.session_state.movie_logs = []
+        st.success("Базата данни е нулирана.")
 
-# TAB 2 – Анализ
-with tab_results:
-    st.subheader("Общо разпределение на оценките")
+# Табове
+tab_vote, tab_stats = st.tabs(["🎥 Добави Ревю", "📊 Статистика на филмите"])
 
-    grades_df = pd.DataFrame.from_dict(
-        st.session_state.grades,
-        orient="index",
-        columns=["Брой"]
-    ).sort_index()
+# TAB 1 – Въвеждане на филм
+with tab_vote:
+    st.subheader("Оцени филм")
 
-    # Бар диаграма
-    st.bar_chart(grades_df)
+    with st.form("movie_form", clear_on_submit=True):
+        m_name = st.text_input("Заглавие на филм *")
+        
+        col_gen, col_rat = st.columns(2)
+        with col_gen:
+            genre = st.selectbox("Жанр", ["Екшън", "Комедия", "Драма", "Фантастика", "Ужаси"])
+        with col_rat:
+            rating = st.selectbox("Оценка *", st.session_state.star_options, index=4)
 
-    # Преобразуваме в по-удобна форма за друг анализ
-    grades_df_reset = grades_df.reset_index()
-    grades_df_reset.columns = ["Оценка", "Брой"]
+        review = st.text_area("Кратко ревю")
+        submitted = st.form_submit_button("🚀 Публикувай ревю")
 
-    if show_stats:
+        if submitted:
+            if m_name.strip() == "":
+                st.error("Моля, въведете заглавие на филма!")
+            else:
+                # Обновяване на брояча
+                st.session_state.rating_counts[rating] += 1
+                
+                # Добавяне в лога
+                st.session_state.movie_logs.append({
+                    "Филм": m_name.strip(),
+                    "Жанр": genre,
+                    "Рейтинг": rating,
+                    "Коментар": review.strip(),
+                    "Дата": datetime.now().strftime("%H:%M - %d.%m.%y")
+                })
+                st.balloons()
+                st.success(f"Ревюто за '{m_name}' е добавено успешно!")
+
+    if show_history and len(st.session_state.movie_logs) > 0:
         st.markdown("---")
-        st.subheader("📊 Статистика")
+        st.subheader("📜 Последни ревюта")
+        df_movies = pd.DataFrame(st.session_state.movie_logs)
+        st.table(df_movies.iloc[::-1].head(5))
 
-        total_votes = grades_df_reset["Брой"].sum()
-        if total_votes == 0:
-            st.info("Все още няма въведени оценки.")
+# TAB 2 – Анализ на данните
+with tab_stats:
+    st.subheader("Разпределение на звездите")
+    
+    # Подготовка на данни за графика
+    stats_df = pd.DataFrame.from_dict(
+        st.session_state.rating_counts, 
+        orient="index", 
+        columns=["Брой гласове"]
+    )
+    st.bar_chart(stats_df)
+
+    if show_analytics:
+        st.markdown("---")
+        total_reviews = sum(st.session_state.rating_counts.values())
+        
+        if total_reviews > 0:
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("Общо ревюта", total_reviews)
+            with c2:
+                # Намиране на най-популярната оценка
+                popular_rating = max(st.session_state.rating_counts, key=st.session_state.rating_counts.get)
+                st.metric("Най-честа оценка", popular_rating)
+            
+            st.markdown("### Подробен отчет")
+            report_df = stats_df.copy().reset_index()
+            report_df.columns = ["Рейтинг", "Брой"]
+            st.dataframe(report_df, use_container_width=True)
         else:
-            # Средна оценка (претеглена)
-            weighted_sum = (grades_df_reset["Оценка"].astype(int) * grades_df_reset["Брой"]).sum()
-            avg_grade = weighted_sum / total_votes
-
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.metric("Общ брой оценки", total_votes)
-            with col_b:
-                st.metric("Средна оценка", f"{avg_grade:.2f}")
-            with col_c:
-                best_grade_row = grades_df_reset.loc[grades_df_reset["Брой"].idxmax()]
-                st.metric("Най-често срещана оценка", int(best_grade_row["Оценка"]))
-
-            # Пай диаграма – процентно разпределение
-            st.markdown("### 🥧 Процентно разпределение")
-            pie_df = grades_df_reset.copy()
-            pie_df["Процент"] = (pie_df["Брой"] / total_votes * 100).round(1)
-            st.dataframe(pie_df, use_container_width=True)
+            st.info("Няма данни за анализ. Добавете първото си ревю!")
